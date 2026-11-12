@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Ibadah Rush</title>
+<style>
+:root{--bg:#0e1325;--ink:#f3f6ff;--mute:#9aa6c8;--acc:#ffd24a;--acc2:#35e0a1;--card:rgba(14,19,37,.82);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#e9eefc;--ink:#10172e;--mute:#53608a;--card:rgba(255,255,255,.88)}}
+:root[data-theme="light"]{--bg:#e9eefc;--ink:#10172e;--mute:#53608a;--card:rgba(255,255,255,.88)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",system-ui,sans-serif}
+body{display:flex;align-items:center;justify-content:center}
+#wrap{position:relative;width:100%;max-width:760px;aspect-ratio:16/10;max-height:100vh;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--card);backdrop-filter:blur(4px);padding:16px}
+.ov.hide{display:none}
+h1{margin:0;font-size:clamp(28px,7vw,52px);letter-spacing:2px;color:var(--acc);text-shadow:0 3px 0 rgba(0,0,0,.35)}
+h1 small{display:block;font-size:.34em;color:var(--acc2);letter-spacing:4px}
+p{margin:8px 0;color:var(--mute);font-size:clamp(12px,2.6vw,16px);max-width:46ch}
+.b{margin-top:10px;background:linear-gradient(#ffe27a,#ffb703);color:#3a2600;border:0;border-bottom:4px solid #c98600;border-radius:14px;padding:12px 34px;font:inherit;font-weight:800;font-size:clamp(16px,3.5vw,22px);cursor:pointer}
+.b:active{transform:translateY(3px);border-bottom-width:1px}
+.big{font-size:clamp(34px,9vw,64px);font-weight:900;color:var(--acc)}
+.leg{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:clamp(11px,2.4vw,14px);color:var(--ink)}
+</style></head><body>
+<div id="wrap">
+<canvas id="cv" width="640" height="400"></canvas>
+<div class="ov" id="menu">
+<h1>IBADAH RUSH<small>LARI · LOMPAT · ISTIQOMAH</small></h1>
+<p>Kamu siswa SMK yang lagi kejar waktu ibadah. Lompati godaan, kumpulkan amal baik, jaga bar Iman jangan sampai habis!</p>
+<div class="leg"><span>🤲 sedekah</span><span>📖 ilmu</span><span>🙏 doa</span><span>🕌 waktu ibadah = Iman penuh</span></div>
+<div class="leg"><span>📱 scroll medsos</span><span>🎮 mabar</span><span>😴 males</span><span>🍔 nongkrong</span></div>
+<p>Ketuk layar / Spasi untuk lompat. Ketuk lagi di udara untuk lompat ganda.</p>
+<button class="b" id="go">MAIN</button>
+</div>
+<div class="ov hide" id="over">
+<div style="color:var(--mute)">Perjalanan selesai</div>
+<div class="big" id="sc">0</div>
+<div id="best" style="color:var(--acc2);font-weight:700"></div>
+<p id="qt"></p>
+<button class="b" id="again">COBA LAGI</button>
+</div>
+</div>
+<script>
+const cv=document.getElementById("cv"),x=cv.getContext("2d"),W=640,H=400,GY=330;
+const $=id=>document.getElementById(id);
+let st="menu",best=0;try{best=+localStorage.getItem("ir_best")||0}catch(e){}
+let p,obs,pick,parts,toast,dist,score,iman,combo,t,spawnT,gateD,shake,inv,flash;
+const SKY=[[255,150,110,60,60,130],[120,190,255,255,230,190],[70,160,255,160,220,255],[255,130,80,120,60,120],[10,12,40,35,30,80]];
+const OB=["📱","🎮","😴","🍔"],GD=["🤲","📖","🙏"];
+const QT=["Amal yang paling dicintai adalah yang konsisten, walau sedikit.","Godaan selalu ada. Yang penting kamu bangkit lagi.","Waktu itu seperti pedang. Kalau tidak kamu pakai, ia memotongmu.","Mulai lagi hari ini. Perbaikan kecil tiap hari itu menang."];
+function reset(){p={y:GY,vy:0,j:0};obs=[];pick=[];parts=[];toast={s:"",t:0};dist=0;score=0;iman=70;combo=1;t=0;spawnT=1;gateD=1500;shake=0;inv=0;flash=0}
+function snd(f,d=.08,ty="sine"){try{const a=snd.a||(snd.a=new (window.AudioContext||window.webkitAudioContext)()),o=a.createOscillator(),g=a.createGain();o.type=ty;o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d);o.stop(a.currentTime+d)}catch(e){}}
+function jump(){
+  if(st!=="play")return;
+  if(p.j<2){p.vy=p.j?-480:-620;p.j++;snd(p.j>1?620:440,.1);emit(70,p.y,"#fff",5)}
+}
+function emit(px,py,c,n){for(let i=0;i<n;i++)parts.push({x:px,y:py,vx:(Math.random()-.5)*240,vy:-Math.random()*220,l:.6,c})}
+function say(s){toast={s,t:1.4}}
+function start(){reset();st="play";$("menu").classList.add("hide");$("over").classList.add("hide")}
+function die(){
+  st="over";snd(160,.4,"sawtooth");
+  const s=Math.floor(score);if(s>best){best=s;try{localStorage.setItem("ir_best",s)}catch(e){}}
+  $("sc").textContent=s;$("best").textContent="Rekor terbaik: "+best;$("qt").textContent="“"+QT[Math.floor(Math.random()*QT.length)]+"”";
+  $("over").classList.remove("hide");
+}
+function lerpSky(){
+  const ph=(dist/3500)%5,i=Math.floor(ph),f=ph-i,a=SKY[i],b=SKY[(i+1)%5];
+  const m=k=>Math.round(a[k]+(b[k]-a[k])*f);
+  return {top:`rgb(${m(0)},${m(1)},${m(2)})`,bot:`rgb(${m(3)},${m(4)},${m(5)})`,night:i===4||(i===3&&f>.6)}
+}
+function bld(off,sp,col,hmin,hv){
+  x.fillStyle=col;let o=(dist*sp)%160;
+  for(let i=-1;i<6;i++){const bx=i*160-o,k=Math.floor((dist*sp-bx)/160+i+50),h=hmin+Math.abs(Math.sin(k*7.3))*hv;x.fillRect(bx,GY-h,130,h);
+    if(Math.sin(k*3.1)>.7){x.beginPath();x.arc(bx+65,GY-h,26,Math.PI,0);x.fill()}}
+}
+function update(dt){
+  t+=dt;const sp=Math.min(230+dist*.012,460);dist+=sp*dt;score+=sp*dt*.02;
+  p.vy+=1900*dt;p.y+=p.vy*dt;if(p.y>=GY){p.y=GY;p.vy=0;p.j=0}
+  iman-=2.4*dt+sp/460*.8*dt;if(iman<=0)return die();
+  inv-=dt;shake=Math.max(0,shake-dt*20);flash=Math.max(0,flash-dt*2);toast.t-=dt;
+  spawnT-=dt;
+  if(spawnT<=0){
+    spawnT=Math.max(.7,1.4-dist/12000)+Math.random()*.7;
+    obs.push({x:W+30,e:OB[Math.floor(Math.random()*4)]});
+    if(Math.random()<.8)pick.push({x:W+60+Math.random()*80,y:GY-60-Math.random()*110,e:GD[Math.floor(Math.random()*3)],g:0});
+  }
+  gateD-=sp*dt;
+  if(gateD<=0){gateD=2600;pick.push({x:W+40,y:GY-30,e:"🕌",g:1})}
+  const px=80,py=p.y-22;
+  obs.forEach(o=>{o.x-=sp*dt;
+    if(inv<=0&&Math.abs(o.x-px)<24&&Math.abs((GY-16)-py)<34){iman-=22;combo=1;inv=1;shake=8;flash=1;snd(130,.25,"square");emit(px,py,"#ff5a5a",14);say("Godaan menang… bangkit!")}});
+  pick.forEach(c=>{c.x-=sp*dt;
+    if(!c.d&&Math.abs(c.x-px)<30&&Math.abs(c.y-py)<34){
+      c.d=1;
+      if(c.g){iman=100;score+=150;say("Waktunya ibadah! Iman penuh ✨");snd(880,.3);emit(c.x,c.y,"#ffd24a",30)}
+      else{iman=Math.min(100,iman+10);score+=10*combo;combo=Math.min(combo+1,10);snd(520+combo*40,.1);emit(c.x,c.y,"#35e0a1",12)}
+    }});
+  obs=obs.filter(o=>o.x>-40);pick=pick.filter(c=>c.x>-40&&!c.d);
+  parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=500*dt;q.l-=dt});parts=parts.filter(q=>q.l>0);
+}
+function draw(){
+  const s=lerpSky(),g=x.createLinearGradient(0,0,0,GY);g.addColorStop(0,s.top);g.addColorStop(1,s.bot);
+  x.save();if(shake>0)x.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  x.fillStyle=g;x.fillRect(-10,-10,W+20,H+20);
+  if(s.night){x.fillStyle="#fff";for(let i=0;i<30;i++){x.globalAlpha=.4+.4*Math.sin(t*2+i);x.fillRect((i*97)%W,(i*53)%150,2,2)}x.globalAlpha=1;x.font="40px serif";x.fillText("🌙",520,70)}
+  else{x.font="40px serif";x.fillText("☀️",500,60+((dist/20)%30))}
+  bld(0,.25,"rgba(30,40,80,.45)",60,60);bld(0,.5,"rgba(15,20,50,.7)",40,50);
+  x.fillStyle="#1d2a3a";x.fillRect(0,GY,W,H-GY);x.fillStyle="#2f435a";x.fillRect(0,GY,W,4);
+  x.fillStyle="rgba(255,255,255,.25)";for(let i=0;i<8;i++)x.fillRect(((i*100-dist)%800+800)%800-40,GY+30,50,4);
+  x.textAlign="center";x.font="34px serif";
+  obs.forEach(o=>x.fillText(o.e,o.x,GY-4));
+  pick.forEach(c=>{x.font=(c.g?46:30)+"px serif";x.fillText(c.e,c.x,c.y+Math.sin(t*5+c.x)*4)});
+  x.fillStyle="rgba(0,0,0,.3)";x.beginPath();x.ellipse(80,GY+2,18-(GY-p.y)/12,5,0,0,7);x.fill();
+  x.save();x.translate(80,p.y-4);x.rotate(p.y<GY?p.vy/2400:Math.sin(t*16)*.08);
+  if(inv>0&&Math.floor(t*14)%2)x.globalAlpha=.4;x.font="42px serif";x.fillText("🧑‍🎓",0,0);x.restore();
+  parts.forEach(q=>{x.globalAlpha=Math.max(0,q.l/.6);x.fillStyle=q.c;x.fillRect(q.x,q.y,5,5)});x.globalAlpha=1;
+  if(flash>0){x.fillStyle=`rgba(255,60,60,${flash*.35})`;x.fillRect(-10,-10,W+20,H+20)}
+  x.restore();
+  x.textAlign="left";x.font="bold 14px Trebuchet MS";x.fillStyle="#fff";x.fillText("IMAN",16,26);
+  x.fillStyle="rgba(0,0,0,.45)";x.fillRect(58,12,180,18);
+  const gr=x.createLinearGradient(58,0,238,0);gr.addColorStop(0,iman<30?"#ff5a5a":"#35e0a1");gr.addColorStop(1,iman<30?"#ff9d5a":"#ffd24a");
+  x.fillStyle=gr;x.fillRect(58,12,180*Math.max(0,iman)/100,18);
+  x.strokeStyle="#fff";x.lineWidth=2;x.strokeRect(58,12,180,18);
+  x.textAlign="right";x.font="bold 22px Trebuchet MS";x.fillText(Math.floor(score),W-16,28);
+  x.font="bold 14px Trebuchet MS";x.fillStyle="#ffd24a";if(combo>1)x.fillText("COMBO x"+combo,W-16,48);
+  if(toast.t>0){x.textAlign="center";x.globalAlpha=Math.min(1,toast.t);x.font="bold 20px Trebuchet MS";x.fillStyle="#fff";x.fillText(toast.s,W/2,110);x.globalAlpha=1}
+}
+let last=performance.now();
+function loop(n){const dt=Math.min(.033,(n-last)/1000);last=n;if(st==="play")update(dt);else if(st==="menu"){t+=dt;dist+=120*dt}draw();requestAnimationFrame(loop)}
+reset();st="menu";
+$("go").onclick=start;$("again").onclick=start;
+cv.addEventListener("pointerdown",e=>{e.preventDefault();jump()});
+addEventListener("keydown",e=>{if(e.code==="Space"||e.code==="ArrowUp"){e.preventDefault();if(st==="play")jump()}});
+requestAnimationFrame(loop);
+</script></body></html>
